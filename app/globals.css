@@ -1,0 +1,120 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-white font-sans text-ink antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    @apply bg-forest text-white;
+  }
+  input::placeholder {
+    color: rgba(26, 26, 22, 0.35);
+  }
+}
+
+@layer utilities {
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ---------- QLOTHE letter loader ----------
+   Each letter rises from below its baseline in sequence (Q, then L, then O…),
+   holds, and fades — looping. Delay is set inline per letter. */
+@keyframes qletter {
+  0% {
+    transform: translateY(0.55em);
+    opacity: 0;
+  }
+  22%,
+  62% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  82%,
+  100% {
+    transform: translateY(-0.18em);
+    opacity: 0;
+  }
+}
+.qloader-letter {
+  display: inline-block;
+  opacity: 0;
+  animation: qletter 1.7s cubic-bezier(0.2, 0.6, 0.2, 1) infinite;
+  will-change: transform, opacity;
+}
+
+/* Intro variant: letters rise once and stay. */
+@keyframes qletter-once {
+  0% {
+    transform: translateY(0.55em);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+.qintro-letter {
+  display: inline-block;
+  opacity: 0;
+  animation: qletter-once 0.55s cubic-bezier(0.2, 0.6, 0.2, 1) forwards;
+  will-change: transform, opacity;
+}
+
+/* Revolving brand mark in the intro (Y-axis spin, like a coin/plate turning). */
+@keyframes qrevolve {
+  0% {
+    transform: rotateY(0deg) scale(0.9);
+    opacity: 0;
+  }
+  18% {
+    opacity: 1;
+  }
+  100% {
+    transform: rotateY(720deg) scale(1);
+    opacity: 1;
+  }
+}
+.qintro-mark {
+  animation: qrevolve 2.1s cubic-bezier(0.3, 0.1, 0.25, 1) forwards;
+  transform-style: preserve-3d;
+  backface-visibility: visible;
+  will-change: transform, opacity;
+}
+
+/* ---------- scroll reveal ---------- */
+.qreveal {
+  opacity: 0;
+  transform: translateY(26px);
+  transition:
+    opacity 0.7s cubic-bezier(0.2, 0.6, 0.2, 1),
+    transform 0.7s cubic-bezier(0.2, 0.6, 0.2, 1);
+}
+.qreveal-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .qreveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .qloader-letter,
+  .qintro-letter {
+    animation-duration: 0.01s;
+    animation-iteration-count: 1;
+    opacity: 1;
+  }
+  .qintro-mark {
+    animation: none;
+    opacity: 1;
+  }
+}
