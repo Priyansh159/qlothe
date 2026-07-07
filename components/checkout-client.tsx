@@ -7,7 +7,7 @@ import { useStore } from "@/components/store-provider";
 import { ProductImage } from "@/components/product-image";
 import { productImageUrl } from "@/lib/images";
 import { inr, gstIncluded, shippingFor, COD_FEE } from "@/lib/format";
-import { openRazorpay } from "@/lib/razorpay-client";
+// import { openRazorpay } from "@/lib/razorpay-client";
 
 const STATES = [
   "Andhra Pradesh", "Assam", "Bihar", "Chhattisgarh", "Delhi", "Goa", "Gujarat", "Haryana",
@@ -42,13 +42,14 @@ function validate(f: Form): Errors {
 
 export function CheckoutClient() {
   const router = useRouter();
-  const { cart, cloudName, razorpayKeyId, user, notify, refreshCart } = useStore();
+  const { cart, cloudName, user, notify, refreshCart } = useStore();
+  // const { razorpayKeyId } = useStore();
 
   const [form, setForm] = useState<Form>({
     name: "", phone: "", pincode: "", line1: "", line2: "", city: "", state: "",
   });
   const [errors, setErrors] = useState<Errors>({});
-  const [pay, setPay] = useState<"RAZORPAY" | "COD">("RAZORPAY");
+  const [pay, setPay] = useState<"RAZORPAY" | "COD">("COD");
   const [coupon, setCoupon] = useState("");
   const [couponSet, setCouponSet] = useState<string | null>(null);
   const [placing, setPlacing] = useState(false);
@@ -113,25 +114,27 @@ export function CheckoutClient() {
 
       void refreshCart(); // cart was consumed by the order
 
-      if (body.razorpay?.orderId && body.razorpay?.keyId) {
-        try {
-          await openRazorpay({
-            keyId: body.razorpay.keyId,
-            razorpayOrderId: body.razorpay.orderId,
-            amount: body.total,
-            orderNumber: body.orderNumber,
-            name: form.name,
-            contact: form.phone,
-            onPaymentSubmitted: () => router.push(`/orders/${body.orderId}?placed=1`),
-            onDismiss: () => router.push(`/orders/${body.orderId}?placed=1&dismissed=1`),
-          });
-        } catch {
-          // checkout.js failed to load — the order exists; let the order page handle retry
-          router.push(`/orders/${body.orderId}?placed=1&dismissed=1`);
-        }
-      } else {
-        router.push(`/orders/${body.orderId}?placed=1`);
-      }
+      // Razorpay is commented out for now.
+      // if (body.razorpay?.orderId && body.razorpay?.keyId) {
+      //   try {
+      //     await openRazorpay({
+      //       keyId: body.razorpay.keyId,
+      //       razorpayOrderId: body.razorpay.orderId,
+      //       amount: body.total,
+      //       orderNumber: body.orderNumber,
+      //       name: form.name,
+      //       contact: form.phone,
+      //       onPaymentSubmitted: () => router.push(`/orders/${body.orderId}?placed=1`),
+      //       onDismiss: () => router.push(`/orders/${body.orderId}?placed=1&dismissed=1`),
+      //     });
+      //   } catch {
+      //     // checkout.js failed to load — the order exists; let the order page handle retry
+      //     router.push(`/orders/${body.orderId}?placed=1&dismissed=1`);
+      //   }
+      // } else {
+      //   router.push(`/orders/${body.orderId}?placed=1`);
+      // }
+      router.push(`/orders/${body.orderId}?placed=1`);
     } finally {
       setPlacing(false);
     }
@@ -269,14 +272,16 @@ export function CheckoutClient() {
           <div>
             <div className="mb-3.5 font-serif text-[19px] font-semibold">Payment</div>
             <div className="flex flex-col gap-[11px]">
-              <button onClick={() => setPay("RAZORPAY")} className={radioCard(pay === "RAZORPAY")}>
-                <div className="mt-px flex-none">{pay === "RAZORPAY" ? "◉" : "○"}</div>
-                <div className="flex-1 text-left">
-                  <div className="text-[14.5px] font-semibold text-ink">UPI / Card / Netbanking</div>
-                  <div className="mt-0.5 text-[12.5px] text-ink/55">Secure payment via Razorpay</div>
-                </div>
-                <span className="font-mono text-[10px] text-forest/50">RECOMMENDED</span>
-              </button>
+              {/* Razorpay is commented out for now.
+                <button onClick={() => setPay("RAZORPAY")} className={radioCard(pay === "RAZORPAY")}>
+                  <div className="mt-px flex-none">{pay === "RAZORPAY" ? "◉" : "○"}</div>
+                  <div className="flex-1 text-left">
+                    <div className="text-[14.5px] font-semibold text-ink">UPI / Card / Netbanking</div>
+                    <div className="mt-0.5 text-[12.5px] text-ink/55">Secure payment via Razorpay</div>
+                  </div>
+                  <span className="font-mono text-[10px] text-forest/50">RECOMMENDED</span>
+                </button>
+              */}
               <button onClick={() => setPay("COD")} className={radioCard(pay === "COD")}>
                 <div className="mt-px flex-none">{pay === "COD" ? "◉" : "○"}</div>
                 <div className="flex-1 text-left">
