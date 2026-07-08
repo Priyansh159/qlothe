@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { signOut } from "next-auth/react";
 import { useStore } from "@/components/store-provider";
 import { CATEGORIES } from "@/lib/catalog";
+import { roleAtLeast } from "@/lib/role-hierarchy";
 
 function SearchIcon({ size = 17 }: { size?: number }) {
   return (
@@ -53,20 +54,28 @@ export function Header() {
     <>
       <header className="sticky top-0 z-50 border-b border-forest/15 bg-white">
         {/* utility bar (desktop) */}
-        <div className="hidden h-[38px] items-center justify-end border-b border-forest/10 bg-paper px-12 md:flex">
+        <div className="hidden h-[38px] items-center justify-end bg-forest px-12 md:flex">
           <div className="flex items-center gap-3.5">
-            <Link href="/#story" className="text-xs font-semibold text-forest hover:opacity-60">
+            <Link href="/#story" className="text-xs font-semibold text-white/85 hover:text-white">
               Help
             </Link>
-            <span className="text-[11px] text-forest/30">|</span>
-            <Link href="/orders" className="text-xs font-semibold text-forest hover:opacity-60">
+            <span className="text-[11px] text-white/30">|</span>
+            <Link href="/orders" className="text-xs font-semibold text-white/85 hover:text-white">
               Track Order
             </Link>
-            <span className="text-[11px] text-forest/30">|</span>
+            {user && roleAtLeast(user.role, "SUPPORT") ? (
+              <>
+                <span className="text-[11px] text-white/30">|</span>
+                <Link href="/admin" className="text-xs font-bold text-white hover:text-white/80">
+                  Admin
+                </Link>
+              </>
+            ) : null}
+            <span className="text-[11px] text-white/30">|</span>
             {user ? (
-              <span className="text-xs font-bold text-forest">{user.name ?? user.email}</span>
+              <span className="text-xs font-bold text-white">{user.name ?? user.email}</span>
             ) : (
-              <Link href="/login" className="text-xs font-bold text-forest hover:opacity-60">
+              <Link href="/login" className="text-xs font-bold text-white hover:text-white/80">
                 Log In
               </Link>
             )}
@@ -233,6 +242,14 @@ export function Header() {
                 </button>
               ))}
             </div>
+            {user && roleAtLeast(user.role, "SUPPORT") ? (
+              <button
+                onClick={() => go("/admin")}
+                className="w-full py-3 text-left text-sm font-bold text-forest"
+              >
+                Admin dashboard →
+              </button>
+            ) : null}
             <div className="mt-[22px] flex gap-2.5">
               {user ? (
                 <button

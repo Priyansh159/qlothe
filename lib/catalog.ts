@@ -1,10 +1,18 @@
 // Storefront category config. `slug` must match Product.category values in
 // the database (free-form string on the Product model).
+//
+// imagePublicId: the Cloudinary public ID for this tile's background photo
+// on the home page "Shop by cut" section. There's no admin UI for this yet
+// (categories aren't a DB model) — to set one: upload the photo anywhere the
+// admin Cloudinary uploader already runs (e.g. attach it to any product in
+// /admin/products, note the public ID shown, then remove it from that
+// product) or upload directly via the Cloudinary dashboard, and paste the
+// resulting public ID string here. Leave null for a plain placeholder tile.
 export const CATEGORIES = [
-  { slug: "oversized-tees", name: "Oversized" },
-  { slug: "classic-tees", name: "Classic" },
-  { slug: "polo-tees", name: "Polo T-Shirt" },
-] as const;
+  { slug: "oversized-tees", name: "Oversized", imagePublicId: null as string | null },
+  { slug: "classic-tees", name: "Classic", imagePublicId: null as string | null },
+  { slug: "polo-tees", name: "Polo T-Shirt", imagePublicId: null as string | null },
+];
 
 export function categoryName(slug: string): string {
   return CATEGORIES.find((c) => c.slug === slug)?.name ?? slug.replace(/-/g, " ");
@@ -27,6 +35,7 @@ const COLOR_HEX: Record<string, string> = {
   sand: "#D9CBB0",
   brown: "#5C4633",
   maroon: "#5E1F2A",
+  red: "#A13D2C",
   grey: "#8A8A85",
   gray: "#8A8A85",
 };
