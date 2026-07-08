@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { createRazorpayOrder } from "@/lib/razorpay";
+// import { createRazorpayOrder } from "@/lib/razorpay";
 import crypto from "crypto";
 import type { z } from "zod";
 import type { checkoutSchema } from "@/lib/validation";
@@ -31,6 +31,12 @@ function generateOrderNumber() {
  * The Razorpay order is created AFTER commit (external call never inside a txn).
  */
 export async function createOrder(userId: string, cartId: string, input: CheckoutInput) {
+  // Razorpay is commented out for now. Keep checkout COD-only until payment
+  // keys/webhooks are ready in production.
+  if (input.paymentMethod === "RAZORPAY") {
+    throw new CheckoutError("Online payments are temporarily unavailable. Please choose Cash on Delivery.", 503);
+  }
+
   // ---- 1. Load cart and re-price from the database. Client totals are display-only.
   const cartItems = await db.cartItem.findMany({
     where: { cartId },
@@ -144,25 +150,25 @@ export async function createOrder(userId: string, cartId: string, input: Checkou
   });
 
   // ---- 4. Razorpay order AFTER commit (never call external APIs inside a txn)
-  if (input.paymentMethod === "RAZORPAY") {
-    try {
-      const rzpOrder = await createRazorpayOrder(total, order.orderNumber);
-      await db.order.update({
-        where: { id: order.id },
-        data: { razorpayOrderId: rzpOrder.id },
-      });
-      return {
-        orderId: order.id,
-        orderNumber: order.orderNumber,
-        total,
-        razorpay: { orderId: rzpOrder.id, keyId: process.env.RAZORPAY_KEY_ID },
-      };
-    } catch (e) {
-      // Razorpay unreachable → the pending order stays; the release-stock
-      // cron cancels it and restores inventory in ≤30 min. Surface a retry.
-      throw new CheckoutError("Payment service unavailable, please retry", 503);
-    }
-  }
+  // if (input.paymentMethod === "RAZORPAY") {
+  //   try {
+  //     const rzpOrder = await createRazorpayOrder(total, order.orderNumber);
+  //     await db.order.update({
+  //       where: { id: order.id },
+  //       data: { razorpayOrderId: rzpOrder.id },
+  //     });
+  //     return {
+  //       orderId: order.id,
+  //       orderNumber: order.orderNumber,
+  //       total,
+  //       razorpay: { orderId: rzpOrder.id, keyId: process.env.RAZORPAY_KEY_ID },
+  //     };
+  //   } catch (e) {
+  //     // Razorpay unreachable -> the pending order stays; the release-stock
+  //     // cron cancels it and restores inventory in <=30 min. Surface a retry.
+  //     throw new CheckoutError("Payment service unavailable, please retry", 503);
+  //   }
+  // }
 
   return { orderId: order.id, orderNumber: order.orderNumber, total, razorpay: null };
 }
