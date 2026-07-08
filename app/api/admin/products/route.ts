@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { productCreateSchema } from "@/lib/validation";
-import { requireAdmin } from "@/lib/auth";
+import { requireRole } from "@/lib/rbac";
 import { createProduct } from "@/services/admin";
 
 export async function POST(req: NextRequest) {
+  let actor;
   try {
-    await requireAdmin();
+    actor = await requireRole("MANAGER");
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: e.status ?? 401 });
   }
@@ -16,7 +17,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const product = await createProduct(parsed.data);
+    const product = await createProduct(actor, parsed.data);
     return NextResponse.json(product, { status: 201 });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: e.status ?? 500 });

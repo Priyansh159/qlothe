@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminOrderQuerySchema } from "@/lib/validation";
-import { requireAdmin } from "@/lib/auth";
+import { requireRole } from "@/lib/rbac";
 import { listOrdersAdmin } from "@/services/admin";
 
 export async function GET(req: NextRequest) {
+  let actor;
   try {
-    await requireAdmin();
+    actor = await requireRole("SUPPORT");
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: e.status ?? 401 });
   }
@@ -15,5 +16,5 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  return NextResponse.json(await listOrdersAdmin(parsed.data));
+  return NextResponse.json(await listOrdersAdmin(actor, parsed.data));
 }

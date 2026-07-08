@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 import { mergeGuestCart } from "@/services/cart";
 import { verifyCredentials } from "@/services/auth";
 import { rateLimit, loginLimiter, clientIp } from "@/lib/rate-limit";
+import { requireRole } from "@/lib/rbac";
 
 class RateLimitedSignin extends CredentialsSignin {
   code = "rate_limited";
@@ -43,7 +44,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const user = await verifyCredentials(email, password);
         if (!user) return null;
-        return { id: user.id, email: user.email, name: user.name, role: user.role };
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          mustChangePassword: user.mustChangePassword,
+        };
       },
     }),
     Google({
@@ -77,13 +84,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id!;
-        token.role = (user.role ?? "CUSTOMER") as "CUSTOMER" | "ADMIN";
+        // Role (and mustChangePassword) are baked into the JWT at sign-in
+        // only — like `role` always was here, a mid-session role/flag change
+        // requires the user to sign in again to pick it up. That's why
+        // services/auth.ts's changeOwnPassword() flow signs the user out
+        // instead of trying to hot-patch the live session.
+        token.role = user.role ?? "CUSTOMER";
+        token.mustChangePassword = user.mustChangePassword ?? false;
       }
       return token;
     },
     async session({ session, token }) {
       session.user.id = token.id;
       session.user.role = token.role;
+      session.user.mustChangePassword = token.mustChangePassword;
       return session;
     },
   },
@@ -100,11 +114,15 @@ export async function requireUserId(): Promise<string> {
   return id;
 }
 
+/**
+ * Thin wrapper over requireRole("ADMIN") — kept as the ADMIN-only shorthand.
+ * Most admin routes now call requireRole directly with whatever minimum
+ * (SUPPORT/MANAGER/ADMIN) actually applies to that action; use requireAdmin
+ * only where the action is genuinely ADMIN-exclusive (staff management).
+ */
 export async function requireAdmin(): Promise<string> {
-  const session = await auth();
-  if (!session?.user?.id) throw Object.assign(new Error("Unauthorized"), { status: 401 });
-  if (session.user.role !== "ADMIN") throw Object.assign(new Error("Forbidden"), { status: 403 });
-  return session.user.id;
+  const { id } = await requireRole("ADMIN");
+  return id;
 }
 
 /** Guest cart id lives in an httpOnly cookie. */

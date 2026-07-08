@@ -3,10 +3,14 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useStore } from "@/components/store-provider";
 import { QlotheLoader } from "@/components/loader";
 import { inr } from "@/lib/format";
-import { openRazorpay } from "@/lib/razorpay-client";
+// Razorpay retry is disabled for now — COD only from the storefront, so a
+// PENDING/failed-payment order has no in-app retry action (only "Keep
+// browsing"). Re-enable by restoring these two imports plus retryPayment()
+// and its button below.
+// import { useStore } from "@/components/store-provider";
+// import { openRazorpay } from "@/lib/razorpay-client";
 
 type OrderItem = {
   id: string;
@@ -56,7 +60,7 @@ export function OrderStatus({ orderId }: { orderId: string }) {
   const params = useSearchParams();
   const placed = params.get("placed") === "1";
   const dismissed = params.get("dismissed") === "1";
-  const { razorpayKeyId, notify } = useStore();
+  // const { razorpayKeyId, notify } = useStore(); // unused while Razorpay is disabled
 
   const [order, setOrder] = useState<Order | null>(null);
   const [gone, setGone] = useState(false);
@@ -102,29 +106,29 @@ export function OrderStatus({ orderId }: { orderId: string }) {
     };
   }, [fetchOrder, dismissed]);
 
-  const retryPayment = async () => {
-    if (!order?.razorpayOrderId || !razorpayKeyId) {
-      notify("Payment retry unavailable — contact support", "error");
-      return;
-    }
-    try {
-      await openRazorpay({
-        keyId: razorpayKeyId,
-        razorpayOrderId: order.razorpayOrderId,
-        amount: order.total,
-        orderNumber: order.orderNumber,
-        name: order.shippingAddress?.name,
-        contact: order.shippingAddress?.phone,
-        onPaymentSubmitted: () => {
-          // full navigation so the page remounts and polling restarts cleanly
-          window.location.href = `/orders/${order.id}?placed=1`;
-        },
-        onDismiss: () => void fetchOrder(),
-      });
-    } catch {
-      notify("Could not open payment — try again", "error");
-    }
-  };
+  // const retryPayment = async () => {
+  //   if (!order?.razorpayOrderId || !razorpayKeyId) {
+  //     notify("Payment retry unavailable — contact support", "error");
+  //     return;
+  //   }
+  //   try {
+  //     await openRazorpay({
+  //       keyId: razorpayKeyId,
+  //       razorpayOrderId: order.razorpayOrderId,
+  //       amount: order.total,
+  //       orderNumber: order.orderNumber,
+  //       name: order.shippingAddress?.name,
+  //       contact: order.shippingAddress?.phone,
+  //       onPaymentSubmitted: () => {
+  //         // full navigation so the page remounts and polling restarts cleanly
+  //         window.location.href = `/orders/${order.id}?placed=1`;
+  //       },
+  //       onDismiss: () => void fetchOrder(),
+  //     });
+  //   } catch {
+  //     notify("Could not open payment — try again", "error");
+  //   }
+  // };
 
   if (gone) {
     return (
@@ -185,12 +189,14 @@ export function OrderStatus({ orderId }: { orderId: string }) {
             : "Your order is reserved for 30 minutes. Complete the payment to confirm it."}
         </p>
         <div className="flex flex-wrap justify-center gap-3">
+          {/* Razorpay retry is disabled for now — see the commented import above.
           <button
             onClick={retryPayment}
             className="h-[52px] rounded-full bg-forest px-[30px] text-[15px] font-bold text-white hover:bg-pine"
           >
             {lastPayment?.status === "FAILED" ? "Retry payment" : "Complete payment"}
           </button>
+          */}
           <Link
             href="/products"
             className="flex h-[52px] items-center rounded-full border-[1.5px] border-forest px-6 text-[15px] font-bold text-forest hover:bg-forest/5"

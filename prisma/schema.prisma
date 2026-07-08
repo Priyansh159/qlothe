@@ -13,8 +13,13 @@ datasource db {
 
 // ---------- enums ----------
 
+// Hierarchy (lowest to highest) — see lib/rbac.ts for the numeric ranking
+// used by requireRole()/roleAtLeast(). Every level includes everything the
+// levels below it can do; ADMIN is the only level that manages staff.
 enum Role {
   CUSTOMER
+  SUPPORT
+  MANAGER
   ADMIN
 }
 
@@ -49,13 +54,19 @@ enum CouponType {
 // ---------- users ----------
 
 model User {
-  id           String   @id @default(uuid()) @db.Uuid
-  email        String   @unique
-  phone        String?  @unique
-  passwordHash String?  @map("password_hash") // null if OAuth-only
-  name         String?
-  role         Role     @default(CUSTOMER)
-  createdAt    DateTime @default(now()) @map("created_at")
+  id                 String   @id @default(uuid()) @db.Uuid
+  email              String   @unique
+  phone              String?  @unique
+  passwordHash       String?  @map("password_hash") // null if OAuth-only
+  name               String?
+  role               Role     @default(CUSTOMER)
+  // Set true when an admin creates a staff account with a temp password.
+  // Cleared by services/auth.ts changeOwnPassword(); enforced by forcing the
+  // /admin shell to show nothing but the change-password form until cleared
+  // (see app/admin/layout.tsx) — the flag is only meaningful for staff roles,
+  // but lives on User since that's the single account table.
+  mustChangePassword Boolean  @default(false) @map("must_change_password")
+  createdAt          DateTime @default(now()) @map("created_at")
 
   addresses Address[]
   carts     Cart[]
@@ -227,6 +238,11 @@ model Order {
   shippingAddress Json          @map("shipping_address") // SNAPSHOT, not FK
   couponCode      String?       @map("coupon_code")
   razorpayOrderId String?       @unique @map("razorpay_order_id")
+  // Set by admins/support when moving an order to SHIPPED — see
+  // services/admin.ts updateOrderStatus(), which requires both nonblank
+  // before allowing that transition.
+  awbNumber       String?       @map("awb_number")
+  courier         String?       @map("courier")
   createdAt       DateTime      @default(now()) @map("created_at")
 
   user          User                 @relation(fields: [userId], references: [id])
@@ -317,4 +333,26 @@ model Review {
 
   @@unique([productId, userId])
   @@map("reviews")
+}
+
+// ---------- admin ----------
+
+// Append-only. No update/delete is ever exposed — services/audit.ts only
+// exposes create + list. actorId intentionally has no FK relation: an audit
+// row must survive even if the staff account is later removed, and nothing
+// here needs a live join back to User beyond a display-time lookup.
+model AdminAuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  actorId    String   @map("actor_id") @db.Uuid
+  action     String // e.g. "order.status_changed", "product.created", "user.role_changed"
+  entityType String   @map("entity_type") // e.g. "Order", "Product", "User", "Coupon", "ProductVariant"
+  entityId   String   @map("entity_id") @db.Uuid
+  before     Json?
+  after      Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@index([createdAt(sort: Desc)])
+  @@map("admin_audit_log")
 }

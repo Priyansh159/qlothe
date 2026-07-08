@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getOrderAdmin, allowedTransitions } from "@/services/admin";
+import { requireRole } from "@/lib/rbac";
+import { getOrderAdmin, allowedTransitionsForRole } from "@/services/admin";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { OrderStatusControl } from "@/components/admin/order-status-control";
 import { inr } from "@/lib/format";
@@ -10,7 +11,8 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Order · Admin" };
 
 export default async function AdminOrderDetailPage({ params }: { params: { id: string } }) {
-  const order = await getOrderAdmin(params.id);
+  const actor = await requireRole("SUPPORT");
+  const order = await getOrderAdmin(actor, params.id);
   if (!order) notFound();
 
   const addr = order.shippingAddress as {
@@ -63,6 +65,15 @@ export default async function AdminOrderDetailPage({ params }: { params: { id: s
             </div>
           </div>
 
+          {/* shipping info, once set */}
+          {order.awbNumber || order.courier ? (
+            <div className="rounded-2xl border border-forest/15 bg-white p-5">
+              <div className="mb-3 text-sm font-bold uppercase tracking-[.04em] text-ink/50">Shipment</div>
+              <Row label="Courier" value={order.courier ?? "—"} />
+              <Row label="AWB / tracking" value={order.awbNumber ?? "—"} />
+            </div>
+          ) : null}
+
           {/* status history */}
           <div className="rounded-2xl border border-forest/15 bg-white p-5">
             <div className="mb-3 text-sm font-bold uppercase tracking-[.04em] text-ink/50">Status history</div>
@@ -106,6 +117,7 @@ export default async function AdminOrderDetailPage({ params }: { params: { id: s
             <div className="mb-3 text-sm font-bold uppercase tracking-[.04em] text-ink/50">Customer</div>
             <div className="text-sm font-semibold">{order.user.name ?? "—"}</div>
             <div className="text-sm text-ink/60">{order.user.email}</div>
+            {order.user.phone ? <div className="text-sm text-ink/60">{order.user.phone}</div> : null}
             <Link
               href={`/admin/orders?userId=${order.user.id}`}
               className="mt-2 inline-block text-xs font-semibold text-forest underline underline-offset-4"
@@ -130,10 +142,10 @@ export default async function AdminOrderDetailPage({ params }: { params: { id: s
             </div>
           </div>
 
-          {/* status control */}
+          {/* status control — buttons only ever show transitions this role may trigger */}
           <div className="rounded-2xl border border-forest/15 bg-white p-5">
             <div className="mb-3 text-sm font-bold uppercase tracking-[.04em] text-ink/50">Change status</div>
-            <OrderStatusControl orderId={order.id} current={order.status} allowed={allowedTransitions(order.status)} />
+            <OrderStatusControl orderId={order.id} allowed={allowedTransitionsForRole(order.status, actor.role)} />
           </div>
         </div>
       </div>

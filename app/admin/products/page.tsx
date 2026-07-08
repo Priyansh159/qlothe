@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { requireRole } from "@/lib/rbac";
 import { listProductsAdmin } from "@/services/admin";
 import { ProductImage } from "@/components/product-image";
 import { productImageUrl } from "@/lib/images";
@@ -9,8 +10,9 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Products · Admin" };
 
 export default async function AdminProductsPage() {
+  const actor = await requireRole("MANAGER");
   const cloudName = process.env.CLOUDINARY_CLOUD_NAME ?? null;
-  const products = await listProductsAdmin();
+  const products = await listProductsAdmin(actor);
 
   return (
     <div>

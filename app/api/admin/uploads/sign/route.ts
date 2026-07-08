@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { uploadSignSchema } from "@/lib/validation";
-import { requireAdmin } from "@/lib/auth";
+import { requireRole } from "@/lib/rbac";
 import { generateUploadSignature } from "@/lib/cloudinary";
 
 export async function POST(req: NextRequest) {
   try {
-    await requireAdmin();
+    await requireRole("MANAGER"); // catalog images are a MANAGER concern, same as product CRUD
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: e.status ?? 401 });
   }

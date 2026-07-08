@@ -36,14 +36,36 @@ Razorpay · Cloudinary · Tailwind. No other libraries without asking.
 - Run npx tsc --noEmit before declaring any task done.
 
 ## Current state
-Schema, services (products, cart, checkout, payments, orders, admin), and
-API routes exist. lib/auth.ts runs NextAuth v5 (credentials + Google, JWT
-sessions, trustHost). Frontend is split into two route groups under app/:
-(storefront) — home, listing, detail, cart, checkout with Razorpay+COD,
-orders, auth, wrapped in its own layout (marquee/header/footer/cart drawer);
-admin — /admin/{orders,products,users}, gated by session.user.role==="ADMIN"
-in app/admin/layout.tsx (UI-only redirect; every mutation is still enforced
-server-side via requireAdmin() in the API route, per the rule below). Client
-state in components/store-provider. Design reference: "QLOTHE Storefront.html"
-mockup. First admin is bootstrapped locally via `npm run admin:seed`
-(scripts/seed-admin.ts) — deliberately not an HTTP endpoint.
+Schema, services (products, cart, checkout, payments, orders, admin, audit,
+auth), and API routes exist. lib/auth.ts runs NextAuth v5 (credentials +
+Google, JWT sessions, trustHost). Frontend is split into two route groups
+under app/: (storefront) — home, listing, detail, cart, checkout with
+Razorpay (currently commented out client-side — COD only until re-enabled,
+see components/checkout-client.tsx) + COD, orders, auth, wrapped in its own
+layout (marquee/header/footer/cart drawer); admin — full staff console at
+/admin/{dashboard,orders,products,coupons,users,audit}.
+
+Roles: CUSTOMER < SUPPORT < MANAGER < ADMIN (prisma Role enum + lib/role-hierarchy.ts
+roleAtLeast). lib/rbac.ts's requireRole(minRole) is the route/page gate (throws
+401/403); every services/admin.ts function additionally calls assertRole()
+itself as the real, server-side backstop per the rule below — routes/pages are
+UI convenience only. app/admin/layout.tsx gates the whole tree at SUPPORT and
+hides nav items below each role's level; it also blocks all admin content
+behind a forced ChangePasswordForm when session.user.mustChangePassword is
+true (set on staff accounts created via POST /api/admin/users until they set
+their own password — see services/auth.ts changeOwnPassword, which signs the
+user out since role/mustChangePassword are only re-read at sign-in).
+
+Order state machine unchanged (services/checkout.ts createOrder and the
+webhook route are untouched); services/admin.ts updateOrderStatus adds:
+SUPPORT may only move an order to SHIPPED/DELIVERED (SHIPPED requires
+Order.awbNumber + courier, both nullable columns), everything else
+(CONFIRMED/CANCELLED/REFUNDED) needs MANAGER+; cancelling/refunding any order
+that hasn't shipped restores stock in the same transaction (mirrors, but
+doesn't share code with, the checkout.ts release pattern — that file was
+off-limits). Every mutating admin function writes an AdminAuditLog row
+(services/audit.ts) — append-only, no update/delete exposed.
+
+First ADMIN is bootstrapped locally via `npm run admin:seed`
+(scripts/seed-admin.ts) — deliberately not an HTTP endpoint; every other
+staff account is created through the admin UI itself (ADMIN-only).

@@ -7,7 +7,11 @@ import { useStore } from "@/components/store-provider";
 import { ProductImage } from "@/components/product-image";
 import { productImageUrl } from "@/lib/images";
 import { inr, gstIncluded, shippingFor, COD_FEE } from "@/lib/format";
-import { openRazorpay } from "@/lib/razorpay-client";
+// Razorpay is disabled for now — COD only. Re-enable by uncommenting this
+// import, the RAZORPAY radio button below, and the openRazorpay branch in
+// placeOrder(). The backend (services/checkout.ts, the webhook route) is
+// untouched and still accepts paymentMethod: "RAZORPAY" if called directly.
+// import { openRazorpay } from "@/lib/razorpay-client";
 
 const STATES = [
   "Andhra Pradesh", "Assam", "Bihar", "Chhattisgarh", "Delhi", "Goa", "Gujarat", "Haryana",
@@ -42,13 +46,14 @@ function validate(f: Form): Errors {
 
 export function CheckoutClient() {
   const router = useRouter();
-  const { cart, cloudName, razorpayKeyId, user, notify, refreshCart } = useStore();
+  const { cart, cloudName, user, notify, refreshCart } = useStore();
+  // const { razorpayKeyId } = useStore(); // unused while Razorpay is disabled
 
   const [form, setForm] = useState<Form>({
     name: "", phone: "", pincode: "", line1: "", line2: "", city: "", state: "",
   });
   const [errors, setErrors] = useState<Errors>({});
-  const [pay, setPay] = useState<"RAZORPAY" | "COD">("RAZORPAY");
+  const [pay, setPay] = useState<"RAZORPAY" | "COD">("COD");
   const [coupon, setCoupon] = useState("");
   const [couponSet, setCouponSet] = useState<string | null>(null);
   const [placing, setPlacing] = useState(false);
@@ -113,25 +118,28 @@ export function CheckoutClient() {
 
       void refreshCart(); // cart was consumed by the order
 
-      if (body.razorpay?.orderId && body.razorpay?.keyId) {
-        try {
-          await openRazorpay({
-            keyId: body.razorpay.keyId,
-            razorpayOrderId: body.razorpay.orderId,
-            amount: body.total,
-            orderNumber: body.orderNumber,
-            name: form.name,
-            contact: form.phone,
-            onPaymentSubmitted: () => router.push(`/orders/${body.orderId}?placed=1`),
-            onDismiss: () => router.push(`/orders/${body.orderId}?placed=1&dismissed=1`),
-          });
-        } catch {
-          // checkout.js failed to load — the order exists; let the order page handle retry
-          router.push(`/orders/${body.orderId}?placed=1&dismissed=1`);
-        }
-      } else {
-        router.push(`/orders/${body.orderId}?placed=1`);
-      }
+      // Razorpay is disabled for now — COD only, so body.razorpay is always
+      // null and we go straight to the confirmation page. Re-enable by
+      // restoring this block (see the commented import above).
+      // if (body.razorpay?.orderId && body.razorpay?.keyId) {
+      //   try {
+      //     await openRazorpay({
+      //       keyId: body.razorpay.keyId,
+      //       razorpayOrderId: body.razorpay.orderId,
+      //       amount: body.total,
+      //       orderNumber: body.orderNumber,
+      //       name: form.name,
+      //       contact: form.phone,
+      //       onPaymentSubmitted: () => router.push(`/orders/${body.orderId}?placed=1`),
+      //       onDismiss: () => router.push(`/orders/${body.orderId}?placed=1&dismissed=1`),
+      //     });
+      //   } catch {
+      //     router.push(`/orders/${body.orderId}?placed=1&dismissed=1`);
+      //   }
+      // } else {
+      //   router.push(`/orders/${body.orderId}?placed=1`);
+      // }
+      router.push(`/orders/${body.orderId}?placed=1`);
     } finally {
       setPlacing(false);
     }
@@ -269,6 +277,9 @@ export function CheckoutClient() {
           <div>
             <div className="mb-3.5 font-serif text-[19px] font-semibold">Payment</div>
             <div className="flex flex-col gap-[11px]">
+              {/* Razorpay (UPI/Card/Netbanking) is disabled for now — COD only.
+                  Re-enable by restoring this button alongside the import/state
+                  changes above.
               <button onClick={() => setPay("RAZORPAY")} className={radioCard(pay === "RAZORPAY")}>
                 <div className="mt-px flex-none">{pay === "RAZORPAY" ? "◉" : "○"}</div>
                 <div className="flex-1 text-left">
@@ -277,6 +288,7 @@ export function CheckoutClient() {
                 </div>
                 <span className="font-mono text-[10px] text-forest/50">RECOMMENDED</span>
               </button>
+              */}
               <button onClick={() => setPay("COD")} className={radioCard(pay === "COD")}>
                 <div className="mt-px flex-none">{pay === "COD" ? "◉" : "○"}</div>
                 <div className="flex-1 text-left">
@@ -390,7 +402,7 @@ export function CheckoutClient() {
               <rect x="5" y="11" width="14" height="10" rx="2" />
               <path d="M8 11V7a4 4 0 0 1 8 0v4" />
             </svg>
-            256-bit secured · UPI · Visa · Mastercard · COD
+            256-bit secured checkout · Cash on Delivery
           </div>
           {user ? null : (
             <p className="mt-3 text-center text-xs text-ink/50">

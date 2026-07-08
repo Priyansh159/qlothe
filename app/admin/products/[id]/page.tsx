@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { requireRole } from "@/lib/rbac";
 import { getProductAdmin } from "@/services/admin";
 import { ProductForm, type ProductFormInitial } from "@/components/admin/product-form";
+import { VariantStockControl } from "@/components/admin/variant-stock-control";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +15,8 @@ function paiseToRupees(paise: number | null): string {
 }
 
 export default async function EditProductPage({ params }: { params: { id: string } }) {
-  const product = await getProductAdmin(params.id);
+  const actor = await requireRole("MANAGER");
+  const product = await getProductAdmin(actor, params.id);
   if (!product) notFound();
 
   const attrs = (product.attributes ?? {}) as Record<string, unknown>;
@@ -50,6 +53,18 @@ export default async function EditProductPage({ params }: { params: { id: string
         ← All products
       </Link>
       <h1 className="mb-6 font-serif text-2xl font-semibold text-forest">Edit {product.name}</h1>
+
+      <div className="mb-6 rounded-2xl border border-forest/15 bg-white p-5">
+        <div className="mb-1 text-sm font-bold uppercase tracking-[.04em] text-ink/50">Quick stock adjustment</div>
+        <p className="mb-4 text-xs text-ink/45">
+          For stocktake corrections on an existing variant — requires a reason and is audited. To add a new
+          variant or set its starting stock, use the form below instead.
+        </p>
+        <VariantStockControl
+          variants={product.variants.map((v) => ({ id: v.id, sku: v.sku, size: v.size, color: v.color, stock: v.stock }))}
+        />
+      </div>
+
       <ProductForm initial={initial} />
     </div>
   );

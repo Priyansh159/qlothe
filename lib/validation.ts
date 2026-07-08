@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { OrderStatus } from "@prisma/client";
+import { OrderStatus, Role, CouponType } from "@prisma/client";
 
 export const productQuerySchema = z.object({
   category: z.string().trim().max(60).optional(),
@@ -85,16 +85,99 @@ export const productUpdateSchema = z.object({
 
 // ---------- admin: orders ----------
 
-export const adminOrderQuerySchema = z.object({
-  status: z.nativeEnum(OrderStatus).optional(),
-  userId: z.string().uuid().optional(),
+export const adminOrderQuerySchema = z
+  .object({
+    status: z.nativeEnum(OrderStatus).optional(),
+    userId: z.string().uuid().optional(),
+    // Free-text: matches orderNumber, or the customer's email/phone.
+    search: z.string().trim().min(1).max(120).optional(),
+    dateFrom: z.coerce.date().optional(),
+    dateTo: z.coerce.date().optional(),
+    page: z.coerce.number().int().min(1).default(1),
+    perPage: z.coerce.number().int().min(1).max(100).default(24),
+  })
+  .refine((v) => !v.dateFrom || !v.dateTo || v.dateFrom <= v.dateTo, {
+    message: "dateFrom must be before dateTo",
+    path: ["dateTo"],
+  });
+
+export const orderStatusUpdateSchema = z
+  .object({
+    status: z.nativeEnum(OrderStatus),
+    note: z.string().trim().max(280).optional(),
+    // Only meaningful (and required) when status === "SHIPPED" — see the
+    // refine below and the authoritative re-check in services/admin.ts.
+    awbNumber: z.string().trim().min(1).max(60).optional(),
+    courier: z.string().trim().min(1).max(60).optional(),
+  })
+  .refine((v) => v.status !== "SHIPPED" || (!!v.awbNumber && !!v.courier), {
+    message: "AWB number and courier are required to mark an order as shipped",
+    path: ["awbNumber"],
+  });
+
+// ---------- admin: users & staff ----------
+
+export const adminUserQuerySchema = z.object({
+  search: z.string().trim().min(1).max(120).optional(), // matches email or name
+  role: z.nativeEnum(Role).optional(),
   page: z.coerce.number().int().min(1).default(1),
   perPage: z.coerce.number().int().min(1).max(100).default(24),
 });
 
-export const orderStatusUpdateSchema = z.object({
-  status: z.nativeEnum(OrderStatus),
-  note: z.string().trim().max(280).optional(),
+export const userRoleUpdateSchema = z.object({
+  role: z.nativeEnum(Role),
+});
+
+// Staff accounts only — CUSTOMER is excluded, that role is what public
+// registration already produces and isn't something an admin needs to grant.
+export const staffCreateSchema = z.object({
+  email: z.string().trim().toLowerCase().email().max(120),
+  name: z.string().trim().min(1).max(80),
+  role: z.enum(["SUPPORT", "MANAGER", "ADMIN"]),
+  // If omitted, the server generates one and returns it exactly once.
+  tempPassword: z.string().min(8).max(72).optional(),
+});
+
+export const changePasswordSchema = z.object({
+  newPassword: z.string().min(8).max(72),
+});
+
+// ---------- admin: coupons ----------
+
+export const couponCreateSchema = z
+  .object({
+    code: z.string().trim().toUpperCase().min(3).max(30).regex(/^[A-Z0-9-]+$/),
+    type: z.nativeEnum(CouponType),
+    value: z.number().int().min(1), // PERCENT: 1-100 · FLAT: paise
+    minOrder: z.number().int().min(0).default(0),
+    maxUses: z.number().int().min(1).nullable().optional(),
+    expiresAt: z.coerce.date().nullable().optional(),
+    isActive: z.boolean().default(true),
+  })
+  .refine((v) => v.type !== "PERCENT" || v.value <= 100, {
+    message: "A PERCENT coupon's value must be between 1 and 100",
+    path: ["value"],
+  });
+
+export const couponUpdateSchema = z
+  .object({
+    type: z.nativeEnum(CouponType).optional(),
+    value: z.number().int().min(1).optional(),
+    minOrder: z.number().int().min(0).optional(),
+    maxUses: z.number().int().min(1).nullable().optional(),
+    expiresAt: z.coerce.date().nullable().optional(),
+    isActive: z.boolean().optional(),
+  })
+  .refine((v) => v.type !== "PERCENT" || v.value === undefined || v.value <= 100, {
+    message: "A PERCENT coupon's value must be between 1 and 100",
+    path: ["value"],
+  });
+
+// ---------- admin: inventory ----------
+
+export const variantStockAdjustSchema = z.object({
+  stock: z.number().int().min(0),
+  reason: z.string().trim().min(1).max(280),
 });
 
 // ---------- admin: Cloudinary signed upload ----------
