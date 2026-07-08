@@ -54,18 +54,27 @@ enum CouponType {
 // ---------- users ----------
 
 model User {
-  id                 String   @id @default(uuid()) @db.Uuid
-  email              String   @unique
-  phone              String?  @unique
-  passwordHash       String?  @map("password_hash") // null if OAuth-only
+  id                 String    @id @default(uuid()) @db.Uuid
+  email              String    @unique
+  // Standard Auth.js/PrismaAdapter fields — required for OAuth sign-in.
+  // createUser() always writes these; without them on the model, every
+  // brand-new Google sign-up throws "Unknown argument `image`" and fails.
+  emailVerified      DateTime? @map("email_verified")
+  image              String?
+  phone              String?   @unique
+  passwordHash       String?   @map("password_hash") // null if OAuth-only
+  // Set while an email change is awaiting confirmation (see services/profile.ts
+  // requestEmailChange/confirmEmailChange). `email` itself only changes once
+  // the link sent to this address is clicked — never on the request alone.
+  pendingEmail       String?   @map("pending_email")
   name               String?
-  role               Role     @default(CUSTOMER)
+  role               Role      @default(CUSTOMER)
   // Set true when an admin creates a staff account with a temp password.
   // Cleared by services/auth.ts changeOwnPassword(); enforced by forcing the
   // /admin shell to show nothing but the change-password form until cleared
   // (see app/admin/layout.tsx) — the flag is only meaningful for staff roles,
   // but lives on User since that's the single account table.
-  mustChangePassword Boolean  @default(false) @map("must_change_password")
+  mustChangePassword Boolean   @default(false) @map("must_change_password")
   createdAt          DateTime @default(now()) @map("created_at")
 
   addresses Address[]

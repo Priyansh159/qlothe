@@ -43,6 +43,25 @@ export const registerSchema = z.object({
   name: z.string().trim().min(1).max(80).optional(),
 });
 
+// ---------- account (self-service profile) ----------
+
+export const profileUpdateSchema = z.object({
+  name: z.string().trim().min(1).max(80).optional(),
+  phone: z.string().trim().regex(/^[6-9]\d{9}$/, "10-digit Indian mobile").optional(),
+});
+
+export const emailChangeRequestSchema = z.object({
+  newEmail: z.string().trim().toLowerCase().email().max(120),
+});
+
+// currentPassword is required by the service whenever the account already
+// has a password set — enforced there, not here, since that depends on DB
+// state (OAuth-only accounts have nothing to "confirm").
+export const passwordChangeSelfSchema = z.object({
+  currentPassword: z.string().max(72).optional(),
+  newPassword: z.string().min(8).max(72),
+});
+
 // ---------- admin: products ----------
 
 export const productVariantInputSchema = z.object({

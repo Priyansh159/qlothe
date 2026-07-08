@@ -205,6 +205,12 @@ export function Header() {
                     <div className="truncate px-3 pb-2.5 text-sm font-semibold">{user.email}</div>
                     <div className="mx-1.5 mb-1.5 h-px bg-forest/10" />
                     <button
+                      onClick={() => go("/account")}
+                      className="w-full rounded-[10px] px-3 py-2.5 text-left text-sm font-medium text-forest hover:bg-forest/5"
+                    >
+                      My profile
+                    </button>
+                    <button
                       onClick={() => go("/orders")}
                       className="w-full rounded-[10px] px-3 py-2.5 text-left text-sm font-medium text-forest hover:bg-forest/5"
                     >
@@ -242,6 +248,14 @@ export function Header() {
                 </button>
               ))}
             </div>
+            {user ? (
+              <button
+                onClick={() => go("/account")}
+                className="w-full py-3 text-left text-sm font-bold text-forest"
+              >
+                My profile →
+              </button>
+            ) : null}
             {user && roleAtLeast(user.role, "SUPPORT") ? (
               <button
                 onClick={() => go("/admin")}

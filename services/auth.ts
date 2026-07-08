@@ -53,12 +53,14 @@ export async function verifyCredentials(email: string, password: string): Promis
 }
 
 /**
- * Self-service password change — used by the forced-change flow for staff
- * accounts created with a temp password (see services/admin.ts
- * createStaffUser), but works for any signed-in user. Clears
- * mustChangePassword. The caller (route) signs the user out afterward so the
- * next sign-in bakes a fresh JWT — role/mustChangePassword are only read at
- * sign-in time (see lib/auth.ts's jwt callback), never hot-patched mid-session.
+ * Used ONLY by the forced-change flow for staff accounts created with a temp
+ * password (see services/admin.ts createStaffUser) — deliberately skips the
+ * current-password check, since the whole point is that they're mid-onboarding
+ * off a password they were just handed, not proving ownership of an
+ * established one. Clears mustChangePassword. The caller (route) signs the
+ * user out afterward so the next sign-in bakes a fresh JWT —
+ * role/mustChangePassword are only read at sign-in time (see lib/auth.ts's
+ * jwt callback), never hot-patched mid-session.
  */
 export async function changeOwnPassword(userId: string, newPassword: string): Promise<void> {
   const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
@@ -66,4 +68,32 @@ export async function changeOwnPassword(userId: string, newPassword: string): Pr
     where: { id: userId },
     data: { passwordHash, mustChangePassword: false },
   });
+}
+
+/**
+ * General-purpose self-service password change for the account settings
+ * page. Unlike changeOwnPassword() above, this verifies the current password
+ * FIRST whenever one exists — a live session should never be enough on its
+ * own to permanently lock the real owner out. OAuth-only accounts (no
+ * passwordHash yet) are the one exception: there's nothing to "confirm", so
+ * this doubles as "set a password for the first time."
+ */
+export async function changePasswordVerified(
+  userId: string,
+  currentPassword: string | undefined,
+  newPassword: string,
+): Promise<void> {
+  const user = await db.user.findUnique({ where: { id: userId }, select: { passwordHash: true } });
+  if (!user) throw new AuthError("Not found", 404);
+
+  if (user.passwordHash) {
+    if (!currentPassword) {
+      throw new AuthError("Enter your current password", 400);
+    }
+    const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!valid) throw new AuthError("Current password is incorrect", 400);
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+  await db.user.update({ where: { id: userId }, data: { passwordHash, mustChangePassword: false } });
 }
