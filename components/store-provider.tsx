@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import type { Role } from "@prisma/client";
 
 export type CartItem = {
   id: string;
@@ -25,7 +26,7 @@ export type CartItem = {
 
 export type Cart = { id: string; items: CartItem[]; subtotal: number };
 
-export type StoreUser = { id: string; name: string | null; email: string | null } | null;
+export type StoreUser = { id: string; name: string | null; email: string | null; role: Role } | null;
 
 type Toast = { id: number; msg: string; type: "success" | "error" };
 

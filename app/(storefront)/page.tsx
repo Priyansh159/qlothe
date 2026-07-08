@@ -69,14 +69,6 @@ export default async function HomePage() {
 
       {/* ============ HERO ============ */}
       <section className="relative overflow-hidden border-b border-forest/15 bg-white">
-        {/* engraving watermark */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/logo.png"
-          alt=""
-          aria-hidden
-          className="pointer-events-none absolute -bottom-16 -left-24 z-[1] h-[85%] w-auto opacity-[.05]"
-        />
         <div className="relative z-[2] mx-auto grid w-full max-w-[1200px] grid-cols-1 items-center gap-8 px-[18px] pb-11 pt-10 md:grid-cols-[minmax(0,1.05fr)_minmax(0,.95fr)] md:gap-11 md:px-12 md:pb-[68px] md:pt-16">
           <div className="relative z-[2]">
             <div className="mb-6 inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-forest/30 px-[13px] py-1.5 font-mono text-[10.5px] font-medium uppercase tracking-[.14em] text-forest">
@@ -204,13 +196,11 @@ export default async function HomePage() {
                 href={`/products?category=${c.slug}`}
                 className="group relative flex min-h-[200px] flex-col justify-between overflow-hidden border border-forest/15 bg-paper p-[18px] transition-colors hover:border-forest md:min-h-[260px] md:p-6"
               >
-                {/* engraving backdrop */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/logo.png"
-                  alt=""
-                  aria-hidden
-                  className="pointer-events-none absolute -bottom-6 -right-8 z-0 h-[85%] w-auto opacity-[.14] transition-transform duration-500 group-hover:scale-105"
+                <ProductImage
+                  src={productImageUrl(cloudName, c.imagePublicId, 700)}
+                  alt={c.name}
+                  label="Add category photo"
+                  className="absolute inset-0 h-full w-full transition-transform duration-500 group-hover:scale-105"
                 />
                 <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-forest/70 via-forest/15 to-forest/35" />
                 <div className="relative z-[2] flex items-start justify-between">

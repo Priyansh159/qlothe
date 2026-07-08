@@ -40,7 +40,12 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   const user = session?.user?.id
-    ? { id: session.user.id, name: session.user.name ?? null, email: session.user.email ?? null }
+    ? {
+        id: session.user.id,
+        name: session.user.name ?? null,
+        email: session.user.email ?? null,
+        role: session.user.role,
+      }
     : null;
 
   return (
