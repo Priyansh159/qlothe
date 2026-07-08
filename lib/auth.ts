@@ -67,17 +67,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // Fold the guest cart (cookie-keyed) into the user's cart on login.
       // Only merge if the cookie actually points at an anonymous cart —
       // never at another user's cart (e.g. a stale cookie from a prior session).
-      if (user.id) {
-        const cartToken = await getCartToken();
-        if (cartToken) {
-          const guestCart = await db.cart.findUnique({
-            where: { id: cartToken },
-            select: { userId: true },
-          });
-          if (guestCart && guestCart.userId === null) {
-            await mergeGuestCart(cartToken, user.id);
+      // This is deliberately best-effort: a stale/broken cart cookie or a
+      // transient DB hiccup here must NEVER fail the sign-in itself — losing
+      // a guest cart is fine, blocking login over it is not.
+      try {
+        if (user.id) {
+          const cartToken = await getCartToken();
+          if (cartToken) {
+            const guestCart = await db.cart.findUnique({
+              where: { id: cartToken },
+              select: { userId: true },
+            });
+            if (guestCart && guestCart.userId === null) {
+              await mergeGuestCart(cartToken, user.id);
+            }
           }
         }
+      } catch (e) {
+        console.error("[auth] guest cart merge failed (non-fatal, sign-in continues):", e);
       }
       return true;
     },
